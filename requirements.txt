@@ -51,5 +51,5 @@ urllib3==1.25.8
 waitress==1.4.3
 wcwidth==0.1.9
 Werkzeug==1.0.1
-xgboost==1.0.2
+xgboost==0.90
 zipp==3.1.0

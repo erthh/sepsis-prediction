@@ -13,9 +13,6 @@ import dash_html_components as html
 import dash_table
 import plotly.graph_objs as go
 
-# Multi-dropdown options
-from controls import COUNTIES, WELL_STATUSES, WELL_TYPES, WELL_COLORS
-
 # get relative data folder
 PATH = pathlib.Path(__file__).parent
 DATA_PATH = PATH.joinpath("data").resolve()
@@ -25,7 +22,6 @@ app = dash.Dash(
 )
 server = app.server
 
-
 # Load data
 
 #points = pickle.load(open(DATA_PATH.joinpath("points.pkl"), "rb"))
@@ -33,29 +29,19 @@ server = app.server
 
 # load the scaler model
 loaded_scaler = pickle.load(open(DATA_PATH.joinpath("scaler.sav"), "rb"))
-# load the model
-loaded_model = pickle.load(open(DATA_PATH.joinpath("xgb_9802_rfe.pkl"), 'rb'))
+# load the XGBoost model
+loaded_model = pickle.load(open(DATA_PATH.joinpath("xgb_9802_rfe.sav"), 'rb'))
 
-
-#My data and variablts 
-web_df = pd.read_csv(DATA_PATH.joinpath("web_temp_data_1.csv"), low_memory=False)
+#My data and variables
 patient_data = pd.read_csv(DATA_PATH.joinpath("patient_data.csv"),low_memory=False)
 patient_data = patient_data.drop(['ICULOS','Glucose'],axis=1)
 
-
+#Declare variables 
 signals = ['HR', 'MAP', 'O2Sat', 'SBP', 'Resp', 'DBP', 'Temp', 'Glucose', 'id']
-demographics = [var for var in web_df if var not in signals]
 rfe_feat = ['Temp_diff3', 'DBP_std', 'Age', 'Temp_diff2', 'Temp_diff4', 'Resp_min',
             'Resp_mean', 'Temp_diff1', 'Temp_diff5', 'Resp_max', 'MAP_min',
             'O2Sat_min', 'SBP_min', 'DBP_min', 'MAP_max', 'DBP_max', 'HR_max',
             'Temp_max', 'Temp_min', 'SBP_max', 'HR_mean', 'O2Sat_max']
-
-
-mean_training = 74
-std_training = 83 
-
-# Create global chart template
-mapbox_access_token = "pk.eyJ1IjoiamFja2x1byIsImEiOiJjajNlcnh3MzEwMHZtMzNueGw3NWw5ZXF5In0.fk8k06T96Ml9CLGgKmk81w"
 
 layout = dict(
     autosize=True,
@@ -65,13 +51,6 @@ layout = dict(
     plot_bgcolor="#F9F9F9",
     paper_bgcolor="#F9F9F9",
     legend=dict(font=dict(size=10), orientation="h"),
-    title="Satellite Overview",
-    mapbox=dict(
-        accesstoken=mapbox_access_token,
-        style="light",
-        center=dict(lon=-78.05, lat=42.54),
-        zoom=7,
-    ),
 )
 
 # Create app layout
@@ -149,8 +128,8 @@ app.layout = html.Div(
                         html.Div([
                             html.H3('Select Start Hour'),
                             dcc.Dropdown(
-                            id='Dropdown_input',
-                            options=[{'label': i, 'value': i} for i in web_df.iloc[:len(web_df)-3].hour],
+                            id='Dropdown_hour_input',
+                            options=[],
                             value='number',
                             clearable=False
                             )
@@ -225,6 +204,11 @@ app.layout = html.Div(
                                     [html.H6("Probability of sepsis"),html.P("0",id="sepsis_prob")],
                                     id="sepsis_container",
                                     className="mini_container six columns",
+                                ),
+                                html.Div(
+                                    [html.H6("Label of sepsis"),html.P("0",id="sepsis_label")],
+                                    id="sepsis_label_container",
+                                    className="mini_container four columns",
                                 )
                             ],
                             id="info-container3",
@@ -267,8 +251,8 @@ app.layout = html.Div(
         html.Div([
                 dash_table.DataTable(
                 id='table_temp',
-                columns=[{"name": i, "id": i} for i in web_df.columns],
-                data=web_df.to_dict('records'),   
+                columns=[{"name": i, "id": i} for i in patient_data.columns],
+                data=patient_data.to_dict('records'),   
                 )
             ],className="row flex-display"
         ),
@@ -284,14 +268,12 @@ def mean_rolling_window(df):
     data_mean = df[['id', 'HR', 'Resp']].groupby('id').rolling(window=6).mean()
     data_mean = data_mean.drop(columns='id')
     data_mean.columns += '_mean'
-
     return data_mean 
 
 def std_rolling_window(df):
     data_std = df[['id', 'DBP']].groupby('id').rolling(window=6).std()
     data_std = data_std.drop(columns='id')
     data_std.columns += '_std'
-
     return data_std
 
 def min_rolling_window(df):
@@ -309,7 +291,7 @@ def max_rolling_window(df):
 def diff1(x):
     return x[-1] - x[-2]
 
-def diff1_rolling_window(df):
+def find_diff1(df):
     data_diff1 = df[['id', 'Temp']].groupby('id').rolling(window=6).apply(diff1, raw=True)
     data_diff1 = data_diff1.drop(columns='id')
     data_diff1.columns += '_diff1'
@@ -318,7 +300,7 @@ def diff1_rolling_window(df):
 def diff2(x):
     return x[-2] - x[3]
 
-def diff2_rolling_window(df):
+def find_diff2(df):
 
     data_diff2 = df[['id', 'Temp']].groupby('id').rolling(window=6).apply(diff2, raw=True)
     data_diff2 = data_diff2.drop(columns='id')
@@ -353,14 +335,13 @@ def find_diff5(df):
   return data_diff5
 
 def extracted_df(dataframe):
-
     # extract patterns for 6 hours
     data_mean = mean_rolling_window(dataframe)
     data_std = std_rolling_window(dataframe)
     data_min = min_rolling_window(dataframe)
     data_max = max_rolling_window(dataframe)
-    data_diff1 = diff1_rolling_window(dataframe)
-    data_diff2 = diff2_rolling_window(dataframe)
+    data_diff1 = find_diff1(dataframe)
+    data_diff2 = find_diff2(dataframe)
     data_diff3 = find_diff3(dataframe) 
     data_diff4 = find_diff4(dataframe)
     data_diff5 = find_diff5(dataframe)
@@ -384,24 +365,7 @@ def extracted_df(dataframe):
 
     return df_clean
 
-
-
-def normalization(df):
-    cat_vars = ['Gender']
-    cont_vars = [col for col in df.columns if col not in ['Gender', 'SepsisLabel']]
-    cont_df = df[cont_vars]
-
-    normalized_df=(cont_df-cont_df.mean())/cont_df.std()
-
-    john_skw_transformation = current_dataset
-     
-    #**normalized_df=(present_data - mean_training)/ std_training**
-
-
-    normalized_df = pd.concat([normalized_df, df['Gender']], axis=1)
-    return normalized_df
-
-def get_statistic(df):
+def get_statistic(df): 
     Max_hour_in_ICU = df['hour'].iloc[len(df['hour'])-1]
     # Age = df['Age'].iloc[1]
     mean_hr = round(df['HR'].mean(),3)
@@ -430,18 +394,18 @@ def get_Line_Chart(df,col):
     }
     return return_output
 
-###########################
-#### Callback Function ####
-###########################
+# ###########################
+# #### Callback Function ####
+# ###########################
 
 @app.callback(
-    Output('Dropdown_input', 'options'),
+    Output('Dropdown_hour_input', 'options'),
     [Input('Dropdown_patient_input', 'value')]
     )
 def update_dropdown_text(value):
     if isinstance(value,int):
         dataset = patient_data[patient_data['id']==value]
-        option = [{'label': i, 'value': i} for i in dataset.iloc[:len(dataset)-3].hour]
+        option = [{'label': i, 'value': i} for i in dataset.iloc[6:len(dataset)].hour]
     else:
         option = []
     return option
@@ -449,7 +413,7 @@ def update_dropdown_text(value):
 
 @app.callback(
     Output('ICU_stay_length', 'children'),
-    [Input('Dropdown_input', 'value')]
+    [Input('Dropdown_hour_input', 'value')]
     )
 def update_dropdown_text(value):
     if isinstance(value,int):
@@ -461,30 +425,28 @@ def update_dropdown_text(value):
     return icu_stay_length
 
 @app.callback(
-    [Output('nonsepsis_prob', 'children'),Output('sepsis_prob', 'children')],
-    [Input('Dropdown_input', 'value'),Input('Dropdown_patient_input', 'value')]
+    [Output('nonsepsis_prob', 'children'),Output('sepsis_prob', 'children'),Output('sepsis_label','children')],
+    [Input('Dropdown_hour_input', 'value'),Input('Dropdown_patient_input', 'value')]
     )
 def update_probability(hour_value,patient_id):
-    
     if isinstance(hour_value,int):
-        if hour_value <= 2:
-            hour_range = 1
-        elif hour_value == 3:
-            hour_range = 2
+        if hour_value <= 5:
+            sepsis_prob = 0
+            nonsepsis_prob = 0
         else:    
             hour_range = hour_value
-
-        df_prob = patient_data[patient_data['id']==patient_id] 
-        extracted_features = extracted_df(df_prob)
-        predictions = loaded_model.predict(extracted_features)
-        predictions_proba = loaded_model.predict_proba(extracted_features)
-
-        sepsis_prob = predictions_proba[0,1]
-        nonsepsis_prob = predictions_proba[0,0]
+            df_prob = patient_data[patient_data['id']==patient_id] 
+            extracted_features = extracted_df(df_prob)
+            predictions = loaded_model.predict(extracted_features)
+            predictions_proba = loaded_model.predict_proba(extracted_features)
+            predictions_label = predictions[hour_range-6]
+            sepsis_prob = predictions_proba[hour_range-6,1]
+            nonsepsis_prob = predictions_proba[hour_range-6,0]
     else:
         sepsis_prob = 0
         nonsepsis_prob = 0
-    return sepsis_prob,nonsepsis_prob
+        predictions_label = 0
+    return sepsis_prob,nonsepsis_prob,predictions_label
 
 @app.callback(
     [Output('hr_text', 'children'),
@@ -552,3 +514,10 @@ def update_O2Sat_chart(value):
 # Main
 if __name__ == "__main__":
     app.run_server(debug=True)
+
+
+
+
+
+
+     
