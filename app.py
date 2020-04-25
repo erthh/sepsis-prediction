@@ -250,7 +250,7 @@ app.layout = html.Div(
         html.H1("Dataset"),
         html.Div([
                 dash_table.DataTable(
-                id='table_temp',
+                id='patient_data_table',
                 columns=[{"name": i, "id": i} for i in patient_data.columns],
                 data=patient_data.to_dict('records'),   
                 )
@@ -417,8 +417,8 @@ def update_dropdown_text(value):
     )
 def update_dropdown_text(value):
     if isinstance(value,int):
-        start_hour = value
-        end_hour = value+2
+        start_hour = value-5
+        end_hour = value
         icu_stay_length = 'Patient stay in ICU from Hours ' + str(start_hour) + ' to ' + str(end_hour) +'.'
     else:
         icu_stay_length = ''
@@ -458,11 +458,13 @@ def update_probability(hour_value,patient_id):
     Output('dbp_text', 'children'),
     Output('maxhour_text', 'children'),
     ],
-    [Input('Dropdown_patient_input', 'value')]
+    [Input('Dropdown_hour_input', 'value'),Input('Dropdown_patient_input', 'value')]
     )
-def update_statistic_text(value):
-    if isinstance(value,int):
-        result_list = get_statistic(patient_data[patient_data['id']==value])
+def update_statistic_text(hour_value,patient_id): 
+    temp_list = [patient_id,hour_value]
+    if all(isinstance(i,int) for i in temp_list):
+        patient_data2 = patient_data[patient_data['id']==patient_id]
+        result_list = get_statistic(patient_data2[hour_value-5:hour_value+1])
     else:
         result_list=[0,0,0,0,0,0,0,0]
     return result_list[0],result_list[1],result_list[2],result_list[3],result_list[4],result_list[5],result_list[6],result_list[7]
@@ -511,6 +513,16 @@ def update_O2Sat_chart(value):
         chart_result = {}
     return chart_result
 
+@app.callback(
+    Output('patient_data_table','data'),
+    [Input('Dropdown_patient_input','value')]
+)
+def update_datatable(value):
+    if isinstance(value,int):
+        data = patient_data[patient_data['id']==value].to_dict('records') 
+    else:
+        data = patient_data.to_dict('records')
+    return data
 # Main
 if __name__ == "__main__":
     app.run_server(debug=True)
