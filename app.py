@@ -20,7 +20,7 @@ DATA_PATH = PATH.joinpath("data").resolve()
 app = dash.Dash(
     __name__, meta_tags=[{"name": "viewport", "content": "width=device-width"}]
 )
-server = app.server
+#erver = app.server
 
 # Load data
 
@@ -237,7 +237,10 @@ app.layout = html.Div(
         html.Div(
             [
                 html.Div(
-                    [dcc.Graph(id="HR_chart",figure={'layout':{'title':'Other statistics'}})],
+                    [dcc.Graph(id="HR_chart",
+                    figure={'layout':{'title':'Other statistics'}}
+                )
+            ],
                     className="pretty_container six columns",
                 ),
                 html.Div(
@@ -390,16 +393,38 @@ def get_statistic(df):
     mean_Resp = round(df['Resp'].mean(),3)
     return mean_hr,mean_Temp,mean_O2Sat,mean_Resp,mean_MAP,mean_SBP,mean_DBP,Max_hour_in_ICU
 
-def get_Line_Chart(df,col):
-    #df = dataframe
-    #col = specific column
-    data = [go.Scatter(x=df['hour'] , y=df[col], name="trace_name",opacity=0.5)]
+def get_Line_Chart(df,col,hour):
+    if(col == 'HR'):
+        Chart_color = "Red"
+    elif(col == 'Temp'):
+        Chart_color = "Black"
+    elif(col == 'Resp'):
+        Chart_color = "Purple"
+    else:
+        Chart_color = "Green"
+    data = [go.Scatter(x=df['hour'] , y=df[col], name="trace_name",opacity=1,marker=dict(color=Chart_color))]
     #layout = {"title":str(col)+" chart vs hours",'x':'xsssssssssssssssss'}
-
+    x0_value = int(df[df['hour']==hour]['hour'])-6
+    x1_value = int(df[df['hour']==hour]['hour'])
+    y0_value = 0
+    y1_value = df[col].max()
     layout = dict(
         title = dict(text=str(col)+" chart vs hours"),
         xaxis = dict(title='Hours'),
-        yaxis = dict(title=str(col))
+        yaxis = dict(title=str(col)),
+        shapes = [dict(
+            type='rect',
+            x0=x0_value,
+            y0=y0_value,
+            x1=x1_value,
+            y1=y1_value,
+            opacity=0.5,
+            layer="below",
+            fillcolor="RoyalBlue",
+            line=dict(
+                color="RoyalBlue",
+            )
+        )]
         )
     return_output={
         "data":data,
@@ -496,44 +521,48 @@ def update_statistic_text(hour_value,patient_id):
 
 @app.callback(
     Output('HR_chart', 'figure'),
-    [Input('Dropdown_patient_input', 'value')]
+    [Input('Dropdown_patient_input', 'value'),Input('Dropdown_hour_input','value')]
     )
-def update_HR_chart(value):
-    if isinstance(value,int):
-        chart_result = get_Line_Chart(patient_data[patient_data['id']==value],"HR")
+def update_HR_chart(value,hour):
+    temp_list = [value,hour]
+    if all(isinstance(i,int) for i in temp_list):
+        chart_result = get_Line_Chart(patient_data[patient_data['id']==value],"HR",hour)
     else:
         chart_result = {}
     return chart_result
 
 @app.callback(
     Output('Temp_chart', 'figure'),
-    [Input('Dropdown_patient_input', 'value')]
+    [Input('Dropdown_patient_input', 'value'),Input('Dropdown_hour_input','value')]
     )
-def update_Temp_chart(value):
-    if isinstance(value,int):
-        chart_result = get_Line_Chart(patient_data[patient_data['id']==value],"Temp")
+def update_Temp_chart(value,hour):
+    temp_list = [value,hour]
+    if all(isinstance(i,int) for i in temp_list):
+        chart_result = get_Line_Chart(patient_data[patient_data['id']==value],"Temp",hour)
     else:
         chart_result = {}
     return chart_result
 
 @app.callback(
     Output('Resp_chart', 'figure'),
-    [Input('Dropdown_patient_input', 'value')]
+    [Input('Dropdown_patient_input', 'value'),Input('Dropdown_hour_input','value')]
     )
-def update_Resp_chart(value):
-    if isinstance(value,int):
-        chart_result = get_Line_Chart(patient_data[patient_data['id']==value],"Resp")
+def update_Resp_chart(value,hour):
+    temp_list = [value,hour]
+    if all(isinstance(i,int) for i in temp_list):
+        chart_result = get_Line_Chart(patient_data[patient_data['id']==value],"Resp",hour)
     else:
         chart_result = {}
     return chart_result
 
 @app.callback(
     Output('O2Sat_chart', 'figure'),
-    [Input('Dropdown_patient_input', 'value')]
+    [Input('Dropdown_patient_input', 'value'),Input('Dropdown_hour_input','value')]
     )
-def update_O2Sat_chart(value):
-    if isinstance(value,int):
-        chart_result = get_Line_Chart(patient_data[patient_data['id']==value],"O2Sat")
+def update_O2Sat_chart(value,hour):
+    temp_list = [value,hour]
+    if all(isinstance(i,int) for i in temp_list):
+        chart_result = get_Line_Chart(patient_data[patient_data['id']==value],"O2Sat",hour)
     else:
         chart_result = {}
     return chart_result
@@ -548,6 +577,16 @@ def update_datatable(value):
     else:
         data = patient_data.to_dict('records')
     return data
+
+@app.callback(
+    Output('Dropdown_hour_input','value'),
+    [Input('Dropdown_patient_input','value')]
+)
+
+def reset_hour_dropdown(value):
+    return ""
+
+
 # Main
 if __name__ == "__main__":
     app.run_server(debug=True)
