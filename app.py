@@ -63,15 +63,15 @@ app.layout = html.Div(
             [
                 html.Div(
                     [
-                        html.Img(
-                            src=app.get_asset_url("dash-logo.png"),
-                            id="plotly-image",
-                            style={
-                                "height": "60px",
-                                "width": "auto",
-                                "margin-bottom": "25px",
-                            },
-                        )
+                        # html.Img(
+                        #     src=app.get_asset_url("dash-logo.png"),
+                        #     id="plotly-image",
+                        #     style={
+                        #         "height": "60px",
+                        #         "width": "auto",
+                        #         "margin-bottom": "25px",
+                        #     },
+                        # )
                     ],
                     className="one-third column",
                 ),
@@ -93,10 +93,10 @@ app.layout = html.Div(
                     id="title",
                 ),
                 html.Div(
-                    [
+                    [   
                         html.A(
                             html.Button("About us", id="learn-more-button"),
-                            href="https://google.com",
+                            href="https://github.com/erthh/sepsis-prediction",
                         )
                     ],
                     className="one-third column",
@@ -135,6 +135,10 @@ app.layout = html.Div(
                             )
                         ]),
                         html.Div(id="ICU_stay_length"),
+                        html.A(
+                            html.Button("Reset", id="reset_button",style={"margin-top":"25px"}),
+                            href="./"
+                        )
                     ],
                     className="pretty_container four columns",
                     id="cross-filter-options",
@@ -144,24 +148,33 @@ app.layout = html.Div(
                         html.Div(
                             [
                                 html.Div(
+                                    [html.H3("Descriptive Statistic",id="statistic_header")],
+                                    className="mini_container twelve columns"
+                                )
+                            ],
+                            className="row container-display",
+                        ),
+                        html.Div(
+                            [
+                                html.Div(
                                     [html.H6("0",id="hr_text"), html.Div("Heart Rate (BPM)")],
-                                    id="wells6",
-                                    className="mini_container three columns",
+                                    id="HR_text_box",
+                                    className="mini_container four columns",
                                 ),
                                 html.Div(
                                     [html.H6("0",id="temp_text"), html.Div("Temperature (Celsius)")],
-                                    id="gas6",
-                                    className="mini_container three columns",
+                                    id="temp_text_box",
+                                    className="mini_container four columns",
                                 ),
                                 html.Div(
                                     [html.H6("0",id="o2sat_text"), html.Div("O2Sat (%)")],
-                                    id="oil6",
-                                    className="mini_container three columns",
+                                    id="O2sat_text_box",
+                                    className="mini_container four columns",
                                 ),
                                 html.Div(
                                     [html.H6("0",id="resp_text"), html.Div("Respiratory Rate (BPM)")],
-                                    id="water6",
-                                    className="mini_container three columns",
+                                    id="resp_text_box",
+                                    className="mini_container four columns",
                                 ),
                             ],
                             id="info-container",
@@ -171,43 +184,43 @@ app.layout = html.Div(
                             [
                                 html.Div(
                                     [html.H6("0",id="map_text"), html.Div("MAP (mmHg)")],
-                                    id="wells2",
-                                    className="mini_container three columns",
+                                    id="map_text_box",
+                                    className="mini_container four columns",
                                 ),
                                 html.Div(
                                     [html.H6("0",id="sbp_text"), html.Div("SBP (mmHg)")],
-                                    id="gas2",
-                                    className="mini_container three columns",
+                                    id="sbp_text_box",
+                                    className="mini_container four columns",
                                 ),
                                 html.Div(
                                     [html.H6("0",id="dbp_text"), html.Div("DBP (mmHg)")],
-                                    id="oil2",
-                                    className="mini_container three columns",
+                                    id="dbp_text_box",
+                                    className="mini_container four columns",
                                 ),
                                 html.Div(
                                     [html.H6("0",id="maxhour_text"), html.Div("Max hours in ICU (hours)")],
-                                    id="water2",
-                                    className="mini_container three columns",
+                                    id="maxhour_text_box",
+                                    className="mini_container four columns",
                                 ),
                             ],
                             id="info-container2",
                             className="row container-display",
                         ),
                         html.Div(
-                            [
+                            [   
+                                html.Div(
+                                    [html.H6("Label of sepsis"),html.P("0",id="sepsis_label")],
+                                    id="sepsis_label_container",
+                                    className="mini_container four columns",
+                                ),
                                 html.Div(
                                     [html.H6("Probability of non sepsis"),html.P("0",id="nonsepsis_prob")],
                                     id="nonsepsis_container",
-                                    className="mini_container six columns",
+                                    className="mini_container four columns",
                                 ),
                                 html.Div(
                                     [html.H6("Probability of sepsis"),html.P("0",id="sepsis_prob")],
                                     id="sepsis_container",
-                                    className="mini_container six columns",
-                                ),
-                                html.Div(
-                                    [html.H6("Label of sepsis"),html.P("0",id="sepsis_label")],
-                                    id="sepsis_label_container",
                                     className="mini_container four columns",
                                 )
                             ],
@@ -247,7 +260,7 @@ app.layout = html.Div(
             ],
             className="row flex-display",
         ),
-        html.H1("Dataset"),
+        html.H1("Dataset",id="dataset_text"),
         html.Div([
                 dash_table.DataTable(
                 id='patient_data_table',
@@ -399,20 +412,22 @@ def get_Line_Chart(df,col):
 # ###########################
 
 @app.callback(
-    Output('Dropdown_hour_input', 'options'),
+    [Output('Dropdown_hour_input', 'options'),Output('dataset_text','children')],
     [Input('Dropdown_patient_input', 'value')]
     )
 def update_dropdown_text(value):
     if isinstance(value,int):
         dataset = patient_data[patient_data['id']==value]
         option = [{'label': i, 'value': i} for i in dataset.iloc[6:len(dataset)].hour]
+        dataset_text = 'Dataset of Patient ID: ' + str(value)
     else:
         option = []
-    return option
+        dataset_text = 'Dataset'
+    return option,dataset_text
 
 
 @app.callback(
-    Output('ICU_stay_length', 'children'),
+    [Output('ICU_stay_length', 'children'),Output('statistic_header','children')],
     [Input('Dropdown_hour_input', 'value')]
     )
 def update_dropdown_text(value):
@@ -420,12 +435,14 @@ def update_dropdown_text(value):
         start_hour = value-5
         end_hour = value
         icu_stay_length = 'Patient stay in ICU from Hours ' + str(start_hour) + ' to ' + str(end_hour) +'.'
+        statistic_header = 'Mean Descriptive Statistic of Patient from hour ' + str(start_hour) + ' to ' + str(end_hour) +'.'
     else:
         icu_stay_length = ''
-    return icu_stay_length
+        statistic_header = 'Descriptive Statistic'
+    return icu_stay_length,statistic_header
 
 @app.callback(
-    [Output('nonsepsis_prob', 'children'),Output('sepsis_prob', 'children'),Output('sepsis_label','children')],
+    [Output('nonsepsis_prob', 'children'),Output('sepsis_prob', 'children'),Output('sepsis_label','children'),Output('sepsis_label_container','className')],
     [Input('Dropdown_hour_input', 'value'),Input('Dropdown_patient_input', 'value')]
     )
 def update_probability(hour_value,patient_id):
@@ -446,7 +463,15 @@ def update_probability(hour_value,patient_id):
         sepsis_prob = 0
         nonsepsis_prob = 0
         predictions_label = 0
-    return sepsis_prob,nonsepsis_prob,predictions_label
+
+    if(predictions_label == 1):
+        sepsis_box_className = "mini_container_red four columns"
+    # elif(predictions_label == 0):
+    #     sepsis_box_className = "mini_container_green four columns"
+    else:
+        sepsis_box_className="mini_container four columns"
+
+    return "{:.5f}".format(nonsepsis_prob),"{:.5f}".format(sepsis_prob),predictions_label,sepsis_box_className
 
 @app.callback(
     [Output('hr_text', 'children'),

@@ -8,6 +8,24 @@ body {
   margin: 5%;
 }
 
+.mini_container_green{
+  border-radius: 5px;
+  background-color:#81F362 ;
+  margin: 10px;
+  padding: 15px;
+  position: relative;
+  box-shadow: 2px 2px 2px lightgrey;
+}
+
+.mini_container_red {
+  border-radius: 5px;
+  background-color: #EE6D6D;
+  margin: 10px;
+  padding: 15px;
+  position: relative;
+  box-shadow: 2px 2px 2px lightgrey;
+}
+
 .two.columns {
   width: 16.25%;
 }
