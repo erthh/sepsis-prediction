@@ -28,12 +28,12 @@ app = dash.Dash(
 #logistic_model = pickle.load(open(DATA_PATH.joinpath("logistic_model.pkl"), "rb"))
 
 # load the scaler model
-loaded_scaler = pickle.load(open(DATA_PATH.joinpath("scaler.sav"), "rb"))
+loaded_scaler = pickle.load(open("data/scaler.sav", "rb"))
 # load the XGBoost model
-loaded_model = pickle.load(open(DATA_PATH.joinpath("xgb_9802_rfe.sav"), 'rb'))
+loaded_model = pickle.load(open("data/xgb_9802_rfe.sav", 'rb'))
 
 #My data and variables
-patient_data = pd.read_csv(DATA_PATH.joinpath("patient_data.csv"),low_memory=False)
+patient_data = pd.read_csv("data/patient_data.csv",low_memory=False)
 patient_data = patient_data.drop(['ICULOS','Glucose'],axis=1)
 
 #Declare variables 
@@ -126,7 +126,7 @@ app.layout = html.Div(
                         html.Div(id="Patient_id_text"),
 
                         html.Div([
-                            html.H3('Select Start Hour'),
+                            html.H3('Select End Hour'),
                             dcc.Dropdown(
                             id='Dropdown_hour_input',
                             options=[],
@@ -209,7 +209,7 @@ app.layout = html.Div(
                         html.Div(
                             [   
                                 html.Div(
-                                    [html.H6("Label of sepsis"),html.P("0",id="sepsis_label")],
+                                    [html.H6("Sepsis Alert"),html.P("0",id="sepsis_label")],
                                     id="sepsis_label_container",
                                     className="mini_container four columns",
                                 ),
@@ -487,16 +487,18 @@ def update_probability(hour_value,patient_id):
     else:
         sepsis_prob = 0
         nonsepsis_prob = 0
-        predictions_label = 0
+        predictions_label = "No sepsis detected"
 
     if(predictions_label == 1):
+        predictions_label = "* Sepsis detected *"
         sepsis_box_className = "mini_container_red four columns"
     # elif(predictions_label == 0):
     #     sepsis_box_className = "mini_container_green four columns"
     else:
+        predictions_label = "No sepsis detected"
         sepsis_box_className="mini_container four columns"
 
-    return "{:.5f}".format(nonsepsis_prob),"{:.5f}".format(sepsis_prob),predictions_label,sepsis_box_className
+    return "{:.2f}".format(nonsepsis_prob),"{:.2f}".format(sepsis_prob),predictions_label,sepsis_box_className
 
 @app.callback(
     [Output('hr_text', 'children'),
@@ -582,7 +584,6 @@ def update_datatable(value):
     Output('Dropdown_hour_input','value'),
     [Input('Dropdown_patient_input','value')]
 )
-
 def reset_hour_dropdown(value):
     return ""
 
