@@ -479,11 +479,20 @@ def update_probability(hour_value,patient_id):
             hour_range = hour_value
             df_prob = patient_data[patient_data['id']==patient_id] 
             extracted_features = extracted_df(df_prob)
-            predictions = loaded_model.predict(extracted_features)
+            #predictions = loaded_model.predict(extracted_features)
+            
             predictions_proba = loaded_model.predict_proba(extracted_features)
-            predictions_label = predictions[hour_range-6]
-            sepsis_prob = predictions_proba[hour_range-6,1]
-            nonsepsis_prob = predictions_proba[hour_range-6,0]
+
+            #set threshold = 0.26 for prediction label 1 or 0 
+            prediction_threshold = predictions_proba[:,1]>=0.26
+            predictions = prediction_threshold.astype(int)
+
+            #recalculate sepsis_prob with *0.5/0.26
+            #sepsis_prob = predictions_proba[hour_range-5,1]*0.5/0.26
+            
+            predictions_label = predictions[hour_range-5]
+            sepsis_prob = predictions_proba[hour_range-5,1]
+            nonsepsis_prob = predictions_proba[hour_range-5,0]
     else:
         sepsis_prob = 0
         nonsepsis_prob = 0
