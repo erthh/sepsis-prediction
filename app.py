@@ -12,6 +12,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_table
 import plotly.graph_objs as go
+import numpy as np
 
 # get relative data folder
 PATH = pathlib.Path(__file__).parent
@@ -488,8 +489,10 @@ def update_probability(hour_value,patient_id):
             predictions = prediction_threshold.astype(int)
 
             #recalculate sepsis_prob with *0.5/0.26
-            #sepsis_prob = predictions_proba[hour_range-5,1]*0.5/0.26
-            
+            sepsis_prob = np.where((predictions_proba[:,1]<=0.5)&(predictions_proba[:,1]>0.26),predictions_proba[:,1]*0.5/0.26,predictions_proba[:,1])
+            non_sepsis_prob = 1-sepsis_prob
+            predictions_proba[:,0] = non_sepsis_prob
+            predictions_proba[:,1] = sepsis_prob
             predictions_label = predictions[hour_range-5]
             sepsis_prob = predictions_proba[hour_range-5,1]
             nonsepsis_prob = predictions_proba[hour_range-5,0]
